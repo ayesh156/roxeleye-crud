@@ -1,0 +1,31 @@
+{
+  "name": "roxeleye-crud",
+  "version": "1.0.0",
+  "description": "A CRUD demo project with Node.js, Express, Prisma and React",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "start": "concurrently \"npm run start:server\" \"npm run start:client\"",
+    "start:server": "cd server && npm start",
+    "start:client": "cd client && npm run preview",
+    "install:all": "npm install && cd server && npm install && cd ../client && npm install",
+    "build": "cd client && npm run build",
+    "prisma:generate": "cd server && npx prisma generate",
+    "prisma:migrate": "cd server && npx prisma migrate dev",
+    "prisma:studio": "cd server && npx prisma studio",
+    "setup": "npm run install:all && npm run prisma:generate"
+  },
+  "keywords": [
+    "nodejs",
+    "express",
+    "prisma",
+    "react",
+    "crud"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

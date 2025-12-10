@@ -1,0 +1,23 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Example model for CRUD operations
+model Item {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  price       Float    @default(0)
+  quantity    Int      @default(0)
+  image       String?  // Path to uploaded image
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
