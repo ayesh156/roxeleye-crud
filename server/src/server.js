@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const itemRoutes = require('./routes/item.route');
+const authRoutes = require('./routes/auth.route');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -89,6 +90,7 @@ app.get('/api/test', (req, res) => {
 });
 
 // API Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/items', itemRoutes);
 
 // Serve the main UI page

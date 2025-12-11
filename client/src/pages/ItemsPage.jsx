@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Card,
     CardHeader,
@@ -23,6 +24,11 @@ import {
     Tooltip,
     Divider,
     Image,
+    Dropdown,
+    DropdownTrigger,
+    DropdownMenu,
+    DropdownItem,
+    Avatar,
 } from '@heroui/react';
 import {
     PlusIcon,
@@ -33,12 +39,27 @@ import {
     ArchiveBoxIcon,
     PhotoIcon,
     XMarkIcon,
+    ArrowRightStartOnRectangleIcon,
+    UserCircleIcon,
+    Cog6ToothIcon,
+    UsersIcon,
+    EyeIcon,
+    UserIcon,
 } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
+import { useAuth } from '../context/AuthContext';
 import { itemService } from '../services/itemService';
 import { validateItem, validateField } from '../validations/itemValidation';
 
 export default function ItemsPage() {
+    const navigate = useNavigate();
+    const { user, logout, isAdmin, isAuthenticated } = useAuth();
+    
+    // Permission checks
+    const canCreate = isAuthenticated?.() ?? false;  // All authenticated users can create
+    const canEdit = isAdmin?.() ?? false;            // Only Admin can edit
+    const canDelete = isAdmin?.() ?? false;          // Only Admin can delete
+    
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -225,6 +246,12 @@ export default function ItemsPage() {
         }
     };
 
+    const handleLogout = () => {
+        logout();
+        toast.success('Logged out successfully');
+        navigate('/login');
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50">
             {/* Header */}
@@ -233,6 +260,66 @@ export default function ItemsPage() {
                 <div className="absolute inset-0 opacity-30" style={{
                     backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.15'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
                 }}></div>
+                
+                {/* User Menu - Top Right */}
+                <div className="absolute top-4 right-4 z-20">
+                    <Dropdown placement="bottom-end">
+                        <DropdownTrigger>
+                            <Button
+                                variant="flat"
+                                className="bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 min-w-0 px-2"
+                            >
+                                <Avatar
+                                    src={user?.avatar ? `http://localhost:3000/${user.avatar}` : undefined}
+                                    name={user?.name}
+                                    size="sm"
+                                    className="w-8 h-8"
+                                    classNames={{
+                                        base: "bg-gradient-to-br from-indigo-400 to-pink-400"
+                                    }}
+                                />
+                                <span className="ml-2 hidden sm:inline">{user?.name}</span>
+                                <Chip size="sm" variant="flat" className="ml-2 bg-white/20 text-white text-xs">
+                                    {user?.role}
+                                </Chip>
+                            </Button>
+                        </DropdownTrigger>
+                        <DropdownMenu aria-label="User menu">
+                            <DropdownItem
+                                key="profile"
+                                startContent={<UserCircleIcon className="w-4 h-4" />}
+                                description={user?.email}
+                            >
+                                My Profile
+                            </DropdownItem>
+                            {isAdmin() && (
+                                <DropdownItem
+                                    key="users"
+                                    startContent={<UsersIcon className="w-4 h-4" />}
+                                    onPress={() => navigate('/manage-users')}
+                                >
+                                    Manage Users
+                                </DropdownItem>
+                            )}
+                            <DropdownItem
+                                key="settings"
+                                startContent={<Cog6ToothIcon className="w-4 h-4" />}
+                                onPress={() => navigate('/settings')}
+                            >
+                                Settings
+                            </DropdownItem>
+                            <DropdownItem
+                                key="logout"
+                                color="danger"
+                                startContent={<ArrowRightStartOnRectangleIcon className="w-4 h-4" />}
+                                onClick={handleLogout}
+                            >
+                                Logout
+                            </DropdownItem>
+                        </DropdownMenu>
+                    </Dropdown>
+                </div>
+
                 <div className="relative z-10 py-12 px-4">
                     <div className="max-w-6xl mx-auto text-center">
                         <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-sm mb-6 shadow-xl">
@@ -264,8 +351,9 @@ export default function ItemsPage() {
             {/* Main Content */}
             <main className="max-w-7xl mx-auto px-4 py-8">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Form Section */}
+                    {/* Form Section - Only shown for users who can create/edit */}
                     <div className="lg:col-span-1">
+                        {(canCreate || editingItem) ? (
                         <Card className="shadow-xl">
                             <CardHeader className="flex flex-col items-start px-6 pt-6 pb-0">
                                 <div className="flex items-center gap-3 w-full">
@@ -448,6 +536,26 @@ export default function ItemsPage() {
                                 </form>
                             </CardBody>
                         </Card>
+                        ) : (
+                        /* View-only user info card */
+                        <Card className="shadow-xl">
+                            <CardBody className="p-8 text-center">
+                                <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mb-6">
+                                    <EyeIcon className="w-10 h-10 text-gray-400" />
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-800 mb-2">View Only Mode</h3>
+                                <p className="text-gray-500 mb-4">
+                                    You have read-only access to this inventory. Contact an administrator if you need editing permissions.
+                                </p>
+                                <Chip color="secondary" variant="flat" className="mx-auto">
+                                    <span className="flex items-center gap-1">
+                                        <UserIcon className="w-3 h-3" />
+                                        {user?.role || 'USER'}
+                                    </span>
+                                </Chip>
+                            </CardBody>
+                        </Card>
+                        )}
 
                         {/* Stats Card */}
                         <Card className="mt-6 shadow-xl border-none bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
@@ -562,30 +670,37 @@ export default function ItemsPage() {
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="flex gap-2">
-                                                            <Tooltip content="Edit item" color="warning">
-                                                                <Button
-                                                                    isIconOnly
-                                                                    size="sm"
-                                                                    variant="flat"
-                                                                    color="warning"
-                                                                    onPress={() => handleEdit(item)}
-                                                                    className="min-w-8 w-8 h-8"
-                                                                >
-                                                                    <PencilSquareIcon className="w-4 h-4" />
-                                                                </Button>
-                                                            </Tooltip>
-                                                            <Tooltip content="Delete item" color="danger">
-                                                                <Button
-                                                                    isIconOnly
-                                                                    size="sm"
-                                                                    variant="flat"
-                                                                    color="danger"
-                                                                    onPress={() => handleDeleteClick(item.id)}
-                                                                    className="min-w-8 w-8 h-8"
-                                                                >
-                                                                    <TrashIcon className="w-4 h-4" />
-                                                                </Button>
-                                                            </Tooltip>
+                                                            {canEdit && (
+                                                                <Tooltip content="Edit item" color="warning">
+                                                                    <Button
+                                                                        isIconOnly
+                                                                        size="sm"
+                                                                        variant="flat"
+                                                                        color="warning"
+                                                                        onPress={() => handleEdit(item)}
+                                                                        className="min-w-8 w-8 h-8"
+                                                                    >
+                                                                        <PencilSquareIcon className="w-4 h-4" />
+                                                                    </Button>
+                                                                </Tooltip>
+                                                            )}
+                                                            {canDelete && (
+                                                                <Tooltip content="Delete item" color="danger">
+                                                                    <Button
+                                                                        isIconOnly
+                                                                        size="sm"
+                                                                        variant="flat"
+                                                                        color="danger"
+                                                                        onPress={() => handleDeleteClick(item.id)}
+                                                                        className="min-w-8 w-8 h-8"
+                                                                    >
+                                                                        <TrashIcon className="w-4 h-4" />
+                                                                    </Button>
+                                                                </Tooltip>
+                                                            )}
+                                                            {!canEdit && !canDelete && (
+                                                                <span className="text-gray-400 text-sm">View only</span>
+                                                            )}
                                                         </div>
                                                     </TableCell>
                                                 </TableRow>

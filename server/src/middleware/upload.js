@@ -4,10 +4,16 @@ const fs = require('fs');
 const sharp = require('sharp');
 const logger = require('../utils/logger');
 
-// Ensure uploads directory exists
+// Ensure uploads directories exist
 const uploadsDir = path.join(__dirname, '../../uploads/items');
+const avatarsDir = path.join(__dirname, '../../uploads/avatars');
+
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+if (!fs.existsSync(avatarsDir)) {
+  fs.mkdirSync(avatarsDir, { recursive: true });
 }
 
 // Use memory storage for processing with sharp
@@ -76,6 +82,45 @@ const processImage = async (req, res, next) => {
   }
 };
 
+// Middleware to process avatar images
+const processAvatar = async (req, res, next) => {
+  if (!req.file) {
+    return next();
+  }
+
+  try {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const filename = `avatar-${uniqueSuffix}.webp`;
+    const outputPath = path.join(avatarsDir, filename);
+
+    // Process avatar - resize to square, compress, convert to WebP
+    await sharp(req.file.buffer)
+      .resize(400, 400, {
+        fit: 'cover',
+        position: 'center'
+      })
+      .webp({ quality: 85 })
+      .toFile(outputPath);
+
+    // Update req.file with new filename
+    req.file.filename = filename;
+    req.file.path = outputPath;
+
+    logger.info('Avatar processed and converted to WebP', { 
+      originalName: req.file.originalname,
+      newFilename: filename 
+    });
+
+    next();
+  } catch (error) {
+    logger.error('Avatar processing failed', { error: error.message, stack: error.stack });
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to process avatar image'
+    });
+  }
+};
+
 // Error handling middleware for multer
 const handleUploadError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
@@ -117,5 +162,6 @@ module.exports = {
   upload,
   handleUploadError,
   processImage,
+  processAvatar,
   deleteImageFile
 };

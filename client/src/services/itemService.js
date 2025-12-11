@@ -1,88 +1,92 @@
 const API_URL = '/api/items';
 
-// Helper function to handle API responses with validation errors
-const handleResponse = async (response) => {
-  const result = await response.json();
-  if (!result.success) {
-    const error = new Error(result.error);
-    if (result.errors) {
-      error.errors = result.errors;
-    }
-    throw error;
+function getToken() {
+  const raw = `; ${document.cookie}`;
+  const parts = raw.split(`; auth=`);
+  if (parts.length !== 2) return null;
+  
+  try {
+    return JSON.parse(decodeURIComponent(parts.pop().split(';').shift()))?.token || null;
+  } catch {
+    return null;
   }
-  return result;
-};
+}
+
+function authHeaders() {
+  const token = getToken();
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
+async function handleResponse(res) {
+  const data = await res.json();
+  if (!data.success) {
+    const err = new Error(data.error);
+    if (data.errors) err.errors = data.errors;
+    throw err;
+  }
+  return data;
+}
 
 export const itemService = {
-  // Get all items
   async getAll() {
-    const response = await fetch(API_URL);
-    const result = await handleResponse(response);
-    return result.data;
+    const res = await fetch(API_URL, { headers: authHeaders() });
+    return (await handleResponse(res)).data;
   },
 
-  // Get single item by ID
   async getById(id) {
-    const response = await fetch(`${API_URL}/${id}`);
-    const result = await handleResponse(response);
-    return result.data;
+    const res = await fetch(`${API_URL}/${id}`, { headers: authHeaders() });
+    return (await handleResponse(res)).data;
   },
 
-  // Create new item (with optional image)
   async create(data, imageFile = null) {
-    const formData = new FormData();
-    formData.append('name', data.name);
-    if (data.description) formData.append('description', data.description);
-    if (data.price !== undefined) formData.append('price', data.price);
-    if (data.quantity !== undefined) formData.append('quantity', data.quantity);
-    if (imageFile) formData.append('image', imageFile);
+    const fd = new FormData();
+    fd.append('name', data.name);
+    if (data.description) fd.append('description', data.description);
+    if (data.price !== undefined) fd.append('price', data.price);
+    if (data.quantity !== undefined) fd.append('quantity', data.quantity);
+    if (imageFile) fd.append('image', imageFile);
 
-    const response = await fetch(API_URL, {
+    const res = await fetch(API_URL, {
       method: 'POST',
-      body: formData
+      headers: authHeaders(),
+      body: fd
     });
-    const result = await handleResponse(response);
-    return result.data;
+    return (await handleResponse(res)).data;
   },
 
-  // Update item (with optional image)
   async update(id, data, imageFile = null) {
-    const formData = new FormData();
-    if (data.name !== undefined) formData.append('name', data.name);
-    if (data.description !== undefined) formData.append('description', data.description);
-    if (data.price !== undefined) formData.append('price', data.price);
-    if (data.quantity !== undefined) formData.append('quantity', data.quantity);
-    if (imageFile) formData.append('image', imageFile);
+    const fd = new FormData();
+    if (data.name !== undefined) fd.append('name', data.name);
+    if (data.description !== undefined) fd.append('description', data.description);
+    if (data.price !== undefined) fd.append('price', data.price);
+    if (data.quantity !== undefined) fd.append('quantity', data.quantity);
+    if (imageFile) fd.append('image', imageFile);
 
-    const response = await fetch(`${API_URL}/${id}`, {
+    const res = await fetch(`${API_URL}/${id}`, {
       method: 'PUT',
-      body: formData
+      headers: authHeaders(),
+      body: fd
     });
-    const result = await handleResponse(response);
-    return result.data;
+    return (await handleResponse(res)).data;
   },
 
-  // Delete item
   async delete(id) {
-    const response = await fetch(`${API_URL}/${id}`, {
-      method: 'DELETE'
+    const res = await fetch(`${API_URL}/${id}`, {
+      method: 'DELETE',
+      headers: authHeaders()
     });
-    const result = await handleResponse(response);
-    return result;
+    return await handleResponse(res);
   },
 
-  // Delete item image only
   async deleteImage(id) {
-    const response = await fetch(`${API_URL}/${id}/image`, {
-      method: 'DELETE'
+    const res = await fetch(`${API_URL}/${id}/image`, {
+      method: 'DELETE',
+      headers: authHeaders()
     });
-    const result = await handleResponse(response);
-    return result.data;
+    return (await handleResponse(res)).data;
   },
 
-  // Get image URL
-  getImageUrl(imagePath) {
-    if (!imagePath) return null;
-    return `http://localhost:3000/${imagePath}`;
+  getImageUrl(path) {
+    return path ? `http://localhost:3000/${path}` : null;
   }
 };
